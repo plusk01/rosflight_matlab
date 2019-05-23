@@ -1,0 +1,37 @@
+#!/bin/bash
+OUTPUT_NAME=$1
+STATIC_LIB=$2
+
+# On Ubuntu 16.04 (as of MATLAB 2017b), MATLAB MEX only supports GCC 4.9,
+# (i.e., MEX uses GCC 4.9 under to hood for Linux targets) but Ubuntu 16.04
+# ships with GCC 5.4. Because of this, we ask GCC/G++ for it's version of 
+# the static archive library libstdc++ so that mex can just compile it in
+# directly. This allows MATLAB 2017b to load the rosflight mex file without
+# any stdc++ linker errors (because the symbols the GCC 5.4 mex are looking
+# for are baked in directly). Windows 10 and macOS do not suffer from this.
+# See: https://www.mathworks.com/support/compilers.html
+#
+# Alternatively, this step could be left out and you could tell MATLAB to
+# supplant its GCC 4.9 libstdc++ using the LD_PRELOAD environment variable
+# See: https://www.mathworks.com/matlabcentral/answers/368748
+ADD_STATIC_LIBCXX=@ADD_STATIC_LIBCXX@
+if [ "$ADD_STATIC_LIBCXX" = true ]; then
+    EXTRA_LIBSTDCXX="$(g++ -print-file-name=libstdc++.a)"
+
+    # In addition, we need to make sure that the old GCC 4.9 uses C++11
+    # and position independent code (-fPIC)
+    EXTRA_FLAGS="CXXFLAGS=\"$CXXFLAGS -std=c++11 -fPIC\" LDFLAGS=\"$LDFLAGS\""
+else
+    EXTRA_LIBSTDCXX=
+    EXTRA_FLAGS=
+fi
+
+# full path to mex compiler
+MEX=@Matlab_MEX_COMPILER@
+
+$MEX -O -output "$OUTPUT_NAME" "@MEX_BINDING_SOURCE@" \
+        "$STATIC_LIB" "$EXTRA_LIBSTDCXX" \
+        @MEX_DEFINES@ \
+        -I"@CMAKE_SOURCE_DIR@/include" \
+        -I"@CMAKE_CURRENT_SOURCE_DIR@/include" \
+        -I"@FIRMWARE_DIR@/include" -I"@FIRMWARE_DIR@/comms" -I"@FIRMWARE_DIR@/lib" $EXTRA_FLAGS
