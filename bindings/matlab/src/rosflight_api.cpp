@@ -20,6 +20,7 @@
 #include <mavlink/mavlink.h>
 #include <rosflight_matlab/matlab_board.h>
 
+using namespace rosflight_firmware;
 
 class ROSflightAPI
 {
@@ -33,6 +34,20 @@ public:
     board_.reset(new rosflight_matlab::MATLABBoard);
     mavlink_.reset(new rosflight_firmware::Mavlink(*board_));
     firmware_.reset(new rosflight_firmware::ROSflight(*board_, *mavlink_));
+
+    firmware_->init();
+
+    // firmware_->params_.set_param_int(PARAM_FILTER_USE_ACC, true);
+    // firmware_->params_.set_param_int(PARAM_FILTER_USE_QUAD_INT, true);
+    // firmware_->params_.set_param_int(PARAM_FILTER_USE_MAT_EXP, true);
+    // firmware_->params_.set_param_float(PARAM_FILTER_KP, 0.5f);
+    // firmware_->params_.set_param_float(PARAM_FILTER_KI, 0.05f);
+    // firmware_->params_.set_param_float(PARAM_ACC_ALPHA, 0.0f);
+    // firmware_->params_.set_param_float(PARAM_GYRO_XY_ALPHA, 0.0f);
+    // firmware_->params_.set_param_float(PARAM_GYRO_Z_ALPHA, 0.0f);
+    // firmware_->params_.set_param_float(PARAM_GYRO_X_BIAS, 0.0);
+    // firmware_->params_.set_param_float(PARAM_GYRO_Y_BIAS, 0.0);
+    // firmware_->params_.set_param_float(PARAM_GYRO_Z_BIAS, 0.0); // We don't converge on z bias
   }
   ~ROSflightAPI() = default;
 
@@ -75,7 +90,42 @@ public:
 
   // --------------------------------------------------------------------------
 
-  void run() const { firmware_->run(); }
+  void run() const
+  {
+    firmware_->run();
+  }
+
+  // --------------------------------------------------------------------------
+
+  void getState(mxArray * plhs[]) const
+  {
+    plhs[0] = mxCreateDoubleMatrix(1, 4, mxREAL); // quaternion
+    plhs[1] = mxCreateDoubleMatrix(1, 3, mxREAL); // Euler RPY
+    plhs[2] = mxCreateDoubleMatrix(1, 3, mxREAL); // omega
+    plhs[3] = mxCreateDoubleMatrix(1, 1, mxREAL); // timestamp
+
+    auto quat = firmware_->estimator_.state().attitude;
+    mxGetDoubles(plhs[0])[0] = static_cast<double>(quat.w);
+    mxGetDoubles(plhs[0])[1] = static_cast<double>(quat.x);
+    mxGetDoubles(plhs[0])[2] = static_cast<double>(quat.y);
+    mxGetDoubles(plhs[0])[3] = static_cast<double>(quat.z);
+
+    float roll = firmware_->estimator_.state().roll;
+    float pitch = firmware_->estimator_.state().pitch;
+    float yaw = firmware_->estimator_.state().yaw;
+    mxGetDoubles(plhs[1])[0] = static_cast<double>(roll);
+    mxGetDoubles(plhs[1])[1] = static_cast<double>(pitch);
+    mxGetDoubles(plhs[1])[2] = static_cast<double>(yaw);
+
+    auto omega = firmware_->estimator_.state().angular_velocity;
+    mxGetDoubles(plhs[2])[0] = static_cast<double>(omega.x);
+    mxGetDoubles(plhs[2])[1] = static_cast<double>(omega.y);
+    mxGetDoubles(plhs[2])[2] = static_cast<double>(omega.z);
+
+    uint64_t time = firmware_->estimator_.state().timestamp_us;
+    *mxGetDoubles(plhs[3]) = static_cast<double>(time*1e-6);
+
+  }
   
 private:
   // ROSflight objects
@@ -144,5 +194,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     rfapi->setTime(prhs[2]);
     return;
   }
+
+  if (!strcmp("run", cmd) && nlhs == 0 && args == 0) {
+    rfapi->run();
+    return;
+  }
+
+  if (!strcmp("get_state", cmd) && nlhs == 4 && args == 0) {
+    rfapi->getState(plhs);
+    return;
+  }
+
+  mexErrMsgTxt("Unrecognized ROSflight API command.");
 
 }

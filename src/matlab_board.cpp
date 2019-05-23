@@ -59,6 +59,9 @@ bool MATLABBoard::imu_read(float accel[3], float* temperature, float gyro[3], ui
 {
   has_new_imu_data_ = false;
 
+  std::memcpy(gyro, gyro_, sizeof(float)*3);
+  std::memcpy(accel, accel_, sizeof(float)*3);
+
   *temperature = 27.0f;
   *time_us = clock_micros();
   return true;
