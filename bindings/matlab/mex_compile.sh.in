@@ -29,7 +29,11 @@ fi
 # full path to mex compiler
 MEX=@Matlab_MEX_COMPILER@
 
-$MEX -O -output "$OUTPUT_NAME" "@MEX_BINDING_SOURCE@" \
+# NOTE: The -R2018a flag is used to tell mex to use the new Complex
+# Interleaved Data API. See, e.g., h
+# https://www.mathworks.com/help/matlab/apiref/mxgetcomplexdoubles.html
+
+$MEX -R2018a -O -output "$OUTPUT_NAME" "@MEX_BINDING_SOURCE@" \
         "$STATIC_LIB" "$EXTRA_LIBSTDCXX" \
         @MEX_DEFINES@ \
         -I"@CMAKE_SOURCE_DIR@/include" \

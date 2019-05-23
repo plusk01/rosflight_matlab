@@ -54,7 +54,7 @@ set(MEX_COMPILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/mex_compile.sh.in)
 set(MEX_COMPILE ${CMAKE_CURRENT_BINARY_DIR}/mex_compile.sh)
 configure_file(${MEX_COMPILE_IN} ${MEX_COMPILE} @ONLY)
 
-set(MEX_PREFIX rosflight)
+set(MEX_PREFIX rosflight_api)
 set(MEX_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${MEX_PREFIX}.${Matlab_MEX_EXTENSION}")
 
 add_custom_target(matlab_bindings ALL DEPENDS ${MEX_OUTPUT})

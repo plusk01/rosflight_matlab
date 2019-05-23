@@ -16,14 +16,9 @@ MATLABBoard::MATLABBoard()
 
 // ----------------------------------------------------------------------------
 
-void MATLABBoard::setTime(uint32_t secs, uint64_t nsecs)
+void MATLABBoard::setTime(double secs)
 {
-  double t = secs + nsecs*1e-9;
-
-  // capture "power on" time so that ROSflight clock is secs from start up
-  if (time_init_ == 0) time_init_ = t;
-
-  time_ = t - time_init_;
+  time_ = secs;
 }
 
 // ----------------------------------------------------------------------------

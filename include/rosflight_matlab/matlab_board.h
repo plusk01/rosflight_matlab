@@ -28,12 +28,16 @@ namespace rosflight_matlab
     /**
      * @brief      Sets the time based on an external clock
      *
-     * @param[in]  secs   The seconds only
-     * @param[in]  nsecs  The remainder in nanoseconds
+     * @param[in]  secs  The seconds
      */
-    void setTime(uint32_t secs, uint64_t nsecs);
+    void setTime(double secs);
 
-
+    /**
+     * @brief      Sets gyro and accel values from external source
+     *
+     * @param[in]  gyro   The gyro
+     * @param[in]  accel  The accel
+     */
     void setIMU(const float gyro[3], const float accel[3]);
 
     //
