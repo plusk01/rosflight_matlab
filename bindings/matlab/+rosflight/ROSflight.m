@@ -55,6 +55,14 @@ classdef ROSflight < handle
             omega = this.rotOut(omega);
         end
 
+        function setParam(this, paramName, value)
+            rosflight.rosflight_api('set_param', this.hObj, paramName, value);
+        end
+
+        function value = getParam(this, paramName)
+            value = rosflight.rosflight_api('get_param', this.hObj, paramName);
+        end
+
     end
 
     methods (Access = private)

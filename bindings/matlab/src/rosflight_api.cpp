@@ -36,18 +36,6 @@ public:
     firmware_.reset(new rosflight_firmware::ROSflight(*board_, *mavlink_));
 
     firmware_->init();
-
-    // firmware_->params_.set_param_int(PARAM_FILTER_USE_ACC, true);
-    // firmware_->params_.set_param_int(PARAM_FILTER_USE_QUAD_INT, true);
-    // firmware_->params_.set_param_int(PARAM_FILTER_USE_MAT_EXP, true);
-    // firmware_->params_.set_param_float(PARAM_FILTER_KP, 0.5f);
-    // firmware_->params_.set_param_float(PARAM_FILTER_KI, 0.05f);
-    // firmware_->params_.set_param_float(PARAM_ACC_ALPHA, 0.0f);
-    // firmware_->params_.set_param_float(PARAM_GYRO_XY_ALPHA, 0.0f);
-    // firmware_->params_.set_param_float(PARAM_GYRO_Z_ALPHA, 0.0f);
-    // firmware_->params_.set_param_float(PARAM_GYRO_X_BIAS, 0.0);
-    // firmware_->params_.set_param_float(PARAM_GYRO_Y_BIAS, 0.0);
-    // firmware_->params_.set_param_float(PARAM_GYRO_Z_BIAS, 0.0); // We don't converge on z bias
   }
   ~ROSflightAPI() = default;
 
@@ -57,6 +45,7 @@ public:
   {
     if (mxGetNumberOfElements(_time) != 1) {
       mexErrMsgTxt("Expected time data to be a scalar.");
+      return;
     }
 
     board_->setTime(*mxGetDoubles(_time));
@@ -69,10 +58,12 @@ public:
 
     if (mxGetNumberOfElements(_gyro) != 3) {
       mexErrMsgTxt("Expected gyro data to have 3 elements.");
+      return;
     }
 
     if (mxGetNumberOfElements(_accel) != 3) {
       mexErrMsgTxt("Expected accel data to have 3 elements.");
+      return;
     }
 
     float gyro[3], accel[3];
@@ -124,7 +115,62 @@ public:
 
     uint64_t time = firmware_->estimator_.state().timestamp_us;
     *mxGetDoubles(plhs[3]) = static_cast<double>(time*1e-6);
+  }
 
+  // --------------------------------------------------------------------------
+
+  void setParam(const mxArray * _paramName, const mxArray * _value)
+  {
+    char paramName[Params::PARAMS_NAME_LENGTH];
+    mxGetString(_paramName, paramName, Params::PARAMS_NAME_LENGTH);
+
+    // convert param name to id
+    uint16_t paramId = firmware_->params_.lookup_param_id(paramName);
+
+    // determine the param type and then use that method
+    auto paramType = firmware_->params_.get_param_type(paramId);
+    if (paramType == PARAM_TYPE_INT32) {
+      uint32_t value = static_cast<uint32_t>(*mxGetDoubles(_value));
+      firmware_->params_.set_param_int(paramId, value);
+
+    } else if (paramType == PARAM_TYPE_FLOAT) {
+      float value = static_cast<float>(*mxGetDoubles(_value));
+      firmware_->params_.set_param_float(paramId, value);
+
+    } else {
+      mexErrMsgTxt("Unknown paramId.");
+      return;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+
+  void getParam(const mxArray * _paramName, mxArray * &_value)
+  {
+    char paramName[Params::PARAMS_NAME_LENGTH];
+    mxGetString(_paramName, paramName, Params::PARAMS_NAME_LENGTH);
+
+    // convert param name to id
+    uint16_t paramId = firmware_->params_.lookup_param_id(paramName);
+
+    // create space for the return value
+    _value = mxCreateDoubleMatrix(1, 1, mxREAL);
+
+    // determine the param type and then use that method
+    auto paramType = firmware_->params_.get_param_type(paramId);
+    if (paramType == PARAM_TYPE_INT32) {
+      int value = firmware_->params_.get_param_int(paramId);
+      *mxGetDoubles(_value) = static_cast<double>(value);
+
+    } else if (paramType == PARAM_TYPE_FLOAT) {
+      float value = firmware_->params_.get_param_float(paramId);
+      std::cout << "Setting value: " << value << std::endl;
+      *mxGetDoubles(_value) = static_cast<double>(value);
+
+    } else {
+      mexErrMsgTxt("Unknown paramId.");
+      return;
+    }
   }
   
 private:
@@ -142,6 +188,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   // plhs   array to be populated by outputs (data passed back to matlab)
   // nrhs   number of inputs
   // prhs   array poplulated by inputs (data passed from matlab)
+
+  // forward std::cout to MATLAB console
+  mxstreambuf mout;
 
   //
   // Input/Output Checking
@@ -202,6 +251,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
   if (!strcmp("get_state", cmd) && nlhs == 4 && args == 0) {
     rfapi->getState(plhs);
+    return;
+  }
+
+  if (!strcmp("set_param", cmd) && nlhs == 0 && args == 2) {
+    rfapi->setParam(prhs[2], prhs[3]);
+    return;
+  }
+
+  if (!strcmp("get_param", cmd) && nlhs == 1 && args == 1) {
+    rfapi->getParam(prhs[2], plhs[0]);
     return;
   }
 
