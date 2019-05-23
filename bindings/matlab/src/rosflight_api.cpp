@@ -121,8 +121,11 @@ public:
 
   void setParam(const mxArray * _paramName, const mxArray * _value)
   {
+    // TODO: The '+1' is a hack to deal with the fact that ROSflight param
+    // names are initialized with null-terminated strings. GYROXY_LPF_ALPHA is
+    // missing it's trailing A (from MATLAB) otherwise.
     char paramName[Params::PARAMS_NAME_LENGTH];
-    mxGetString(_paramName, paramName, Params::PARAMS_NAME_LENGTH);
+    mxGetString(_paramName, paramName, Params::PARAMS_NAME_LENGTH+1);
 
     // convert param name to id
     uint16_t paramId = firmware_->params_.lookup_param_id(paramName);
