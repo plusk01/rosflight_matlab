@@ -63,6 +63,10 @@ classdef ROSflight < handle
             value = rosflight.rosflight_api('get_param', this.hObj, paramName);
         end
 
+        function extAttCorrection(this, q)
+            rosflight.rosflight_api('ext_att_correction', this.hObj, q);
+        end
+
     end
 
     methods (Access = private)

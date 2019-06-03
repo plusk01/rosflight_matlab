@@ -178,12 +178,82 @@ public:
       return;
     }
   }
+
+  // --------------------------------------------------------------------------
+
+  void extAttCorrection(const mxArray * _q)
+  {
+
+    if (mxGetNumberOfElements(_q) != 4) {
+      mexErrMsgTxt("Expected a unit quaternion (i.e., 4 elements).");
+      return;
+    }
+
+    turbomath::Quaternion q(
+          static_cast<float>(mxGetDoubles(_q)[0]), // w
+          static_cast<float>(mxGetDoubles(_q)[1]), // x
+          static_cast<float>(mxGetDoubles(_q)[2]), // y
+          static_cast<float>(mxGetDoubles(_q)[3]) // z
+        );
+
+    firmware_->estimator_.set_attitude_correction(q);
+  }
   
 private:
   // ROSflight objects
   std::unique_ptr<rosflight_matlab::MATLABBoard> board_;
   std::unique_ptr<rosflight_firmware::Mavlink> mavlink_;
   std::unique_ptr<rosflight_firmware::ROSflight> firmware_;
+};
+
+// ============================================================================
+// ============================================================================
+
+/**
+ * Utils and Tools (static)
+ */
+class Utils
+{
+public:
+  Utils() = delete;
+  ~Utils() = delete;
+
+  static void boxminus(const mxArray * _q1, const mxArray * _q2, mxArray * &_v)
+  {
+
+    if (mxGetNumberOfElements(_q2) != 4) {
+      mexErrMsgTxt("Expected a unit quaternion q1 (i.e., 4 elements).");
+      return;
+    }
+
+    if (mxGetNumberOfElements(_q2) != 4) {
+      mexErrMsgTxt("Expected a unit quaternion q2 (i.e., 4 elements).");
+      return;
+    }
+
+    turbomath::Quaternion q1(
+          static_cast<float>(mxGetDoubles(_q1)[0]), // w
+          static_cast<float>(mxGetDoubles(_q1)[1]), // x
+          static_cast<float>(mxGetDoubles(_q1)[2]), // y
+          static_cast<float>(mxGetDoubles(_q1)[3]) // z
+        );
+
+    turbomath::Quaternion q2(
+          static_cast<float>(mxGetDoubles(_q2)[0]), // w
+          static_cast<float>(mxGetDoubles(_q2)[1]), // x
+          static_cast<float>(mxGetDoubles(_q2)[2]), // y
+          static_cast<float>(mxGetDoubles(_q2)[3]) // z
+        );
+
+
+    turbomath::Vector v = q1.boxminus(q2);
+
+    _v = mxCreateDoubleMatrix(1, 3, mxREAL);
+    mxGetDoubles(_v)[0] = static_cast<double>(v.x);
+    mxGetDoubles(_v)[1] = static_cast<double>(v.y);
+    mxGetDoubles(_v)[2] = static_cast<double>(v.z);
+  }
+
 };
 
 // ============================================================================
@@ -232,8 +302,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     return;
   }
 
+  // any command starting with 'utils_' is to a static call (no object)
+  bool hasHandle = !(strstr(cmd, "utils_") != nullptr);
+
   // for convenience
-  auto rfapi = convertMat2Ptr<ROSflightAPI>(prhs[1]);
+  ROSflightAPI * rfapi = (hasHandle) ? convertMat2Ptr<ROSflightAPI>(prhs[1]) : nullptr;
   size_t args = nrhs-2; // args: [cmd, handle, ...]
 
   //
@@ -267,6 +340,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
   if (!strcmp("get_param", cmd) && nlhs == 1 && args == 1) {
     rfapi->getParam(prhs[2], plhs[0]);
+    return;
+  }
+
+  if (!strcmp("ext_att_correction", cmd) && nlhs == 0 && args == 1) {
+    rfapi->extAttCorrection(prhs[2]);
+    return;
+  }
+
+  //
+  // Static tools
+  //
+
+  if (!strcmp("utils_boxminus", cmd) && nlhs == 1 && args == 2) {
+    Utils::boxminus(prhs[2], prhs[3], plhs[0]);
     return;
   }
 
