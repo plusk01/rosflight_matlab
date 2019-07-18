@@ -64,6 +64,7 @@ classdef ROSflight < handle
         end
 
         function extAttCorrection(this, q)
+            q(2:4) = this.rotIn(q(2:4));
             rosflight.rosflight_api('ext_att_correction', this.hObj, q);
         end
 
