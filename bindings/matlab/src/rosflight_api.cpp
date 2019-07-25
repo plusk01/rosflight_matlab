@@ -196,7 +196,7 @@ public:
           static_cast<float>(mxGetDoubles(_q)[3]) // z
         );
 
-    firmware_->estimator_.set_attitude_correction(q);
+    firmware_->estimator_.set_external_attitude_update(q);
   }
   
 private:
